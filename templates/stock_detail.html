@@ -99,6 +99,7 @@
                 </div>
                 <div id="predictionChart" style="height: 300px; display: none;"></div>
                 <div id="topFactors" style="display: none;" class="mt-3"></div>
+                <div id="predictionExtras" style="display: none;" class="mt-3"></div>
             </div>
         </div>
     </div>
@@ -276,12 +277,96 @@ function runPrediction() {
                     </div>`
                 ).join('');
             }
+
+            // Extended prediction data
+            renderPredictionExtras(data);
         })
         .catch(() => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-magic"></i> 运行预测';
             container.innerHTML = '<div class="alert alert-danger">预测失败，请重试</div>';
         });
+}
+
+function renderPredictionExtras(data) {
+    const extrasDiv = document.getElementById('predictionExtras');
+    const hasConfidence = typeof data.confidence === 'number';
+    const hasTrend = data.trend_analysis && typeof data.trend_analysis === 'object';
+    const hasSR = data.support_resistance && typeof data.support_resistance === 'object';
+    const hasRisk = typeof data.risk_level === 'string';
+
+    if (!hasConfidence && !hasTrend && !hasSR && !hasRisk) {
+        extrasDiv.style.display = 'none';
+        return;
+    }
+
+    let html = '';
+
+    // Confidence score
+    if (hasConfidence) {
+        const score = data.confidence;
+        const barColor = score > 60 ? 'bg-success' : score >= 30 ? 'bg-warning' : 'bg-danger';
+        html += `<div class="mb-3">
+            <h6>置信度</h6>
+            <div class="d-flex align-items-center">
+                <div class="progress flex-grow-1" style="height: 20px;">
+                    <div class="progress-bar ${barColor}" role="progressbar" style="width: ${score}%;" aria-valuenow="${score}" aria-valuemin="0" aria-valuemax="100">${score}%</div>
+                </div>
+                <span class="ms-2 fw-bold">${score}/100</span>
+            </div>
+        </div>`;
+    }
+
+    // Risk assessment
+    if (hasRisk) {
+        const riskLower = data.risk_level.toLowerCase();
+        const riskBadge = riskLower === 'low' ? 'bg-success' : riskLower === 'high' ? 'bg-danger' : 'bg-warning text-dark';
+        html += `<div class="mb-3">
+            <h6>风险评估</h6>
+            <span class="badge ${riskBadge} fs-6">${data.risk_level}</span>
+        </div>`;
+    }
+
+    // Trend analysis
+    if (hasTrend) {
+        const ta = data.trend_analysis;
+        const trendBadge = (label) => {
+            if (!label) return '';
+            const l = label.toLowerCase();
+            const cls = l === 'bullish' ? 'bg-success' : l === 'bearish' ? 'bg-danger' : 'bg-secondary';
+            return `<span class="badge ${cls}">${label}</span>`;
+        };
+        html += `<div class="mb-3">
+            <h6>趋势分析</h6>
+            <div class="d-flex flex-wrap gap-2 align-items-center">`;
+        if (ta.short_term) html += `<span class="text-muted small me-1">短期</span>${trendBadge(ta.short_term)}`;
+        if (ta.medium_term) html += `<span class="text-muted small me-1 ms-2">中期</span>${trendBadge(ta.medium_term)}`;
+        if (ta.long_term) html += `<span class="text-muted small me-1 ms-2">长期</span>${trendBadge(ta.long_term)}`;
+        html += `</div>`;
+        if (ta.alignment) {
+            html += `<p class="text-muted small mt-1 mb-0">${ta.alignment}</p>`;
+        }
+        html += `</div>`;
+    }
+
+    // Support / Resistance
+    if (hasSR) {
+        const sr = data.support_resistance;
+        const fmt = (v) => v != null ? `$${Number(v).toFixed(2)}` : '-';
+        html += `<div class="mb-3">
+            <h6>支撑/阻力位</h6>
+            <table class="table table-sm table-bordered mb-0" style="max-width: 320px;">
+                <thead class="table-light"><tr><th></th><th class="text-end">第一档</th><th class="text-end">第二档</th></tr></thead>
+                <tbody>
+                    <tr><td class="text-danger fw-bold">阻力</td><td class="text-end">${fmt(sr.resistance_1)}</td><td class="text-end">${fmt(sr.resistance_2)}</td></tr>
+                    <tr><td class="text-success fw-bold">支撑</td><td class="text-end">${fmt(sr.support_1)}</td><td class="text-end">${fmt(sr.support_2)}</td></tr>
+                </tbody>
+            </table>
+        </div>`;
+    }
+
+    extrasDiv.innerHTML = html;
+    extrasDiv.style.display = 'block';
 }
 
 function loadNews() {
