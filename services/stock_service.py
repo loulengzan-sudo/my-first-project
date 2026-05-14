@@ -1,27 +1,94 @@
 import pandas as pd
+import pickle
 import time
 import os
 
 DEMO_MODE = os.environ.get("STOCK_DEMO_MODE", "auto")
 
+CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", ".cache")
+os.makedirs(CACHE_DIR, exist_ok=True)
+
 _cache = {}
 _cache_timestamps = {}
-CACHE_TTL = 300
+CACHE_TTL = 1800  # 30 minutes to reduce Yahoo rate-limit hits
+DISK_CACHE_TTL = 86400  # 1 day disk cache as fallback
+
+
+def _cache_file(key):
+    safe = "".join(c if c.isalnum() else "_" for c in key)
+    return os.path.join(CACHE_DIR, f"{safe}.pkl")
+
+
+def _load_disk(key):
+    path = _cache_file(key)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "rb") as f:
+            ts, value = pickle.load(f)
+        if time.time() - ts < DISK_CACHE_TTL:
+            return value
+    except Exception:
+        return None
+    return None
+
+
+def _save_disk(key, value):
+    try:
+        with open(_cache_file(key), "wb") as f:
+            pickle.dump((time.time(), value), f)
+    except Exception:
+        pass
 
 
 def _get_cached(key, fetcher):
     now = time.time()
     if key in _cache and now - _cache_timestamps.get(key, 0) < CACHE_TTL:
         return _cache[key]
-    result = fetcher()
-    _cache[key] = result
-    _cache_timestamps[key] = now
-    return result
+    try:
+        result = fetcher()
+        if result is not None and not (hasattr(result, "empty") and result.empty):
+            _cache[key] = result
+            _cache_timestamps[key] = now
+            _save_disk(key, result)
+            return result
+    except Exception:
+        pass
+    disk_val = _load_disk(key)
+    if disk_val is not None:
+        _cache[key] = disk_val
+        _cache_timestamps[key] = now
+        return disk_val
+    raise RuntimeError(f"No data available for {key}")
 
 
 def _try_real_stock_info(ticker):
     import yfinance as yf
     stock = yf.Ticker(ticker)
+    try:
+        fi = stock.fast_info
+        last_price = float(fi.get("last_price") or fi.get("lastPrice") or 0)
+        prev_close = float(fi.get("previous_close") or fi.get("previousClose") or 0)
+        if last_price and prev_close:
+            return {
+                "ticker": ticker,
+                "name": ticker,
+                "price": last_price,
+                "previous_close": prev_close,
+                "open": float(fi.get("open") or 0),
+                "day_high": float(fi.get("day_high") or fi.get("dayHigh") or 0),
+                "day_low": float(fi.get("day_low") or fi.get("dayLow") or 0),
+                "volume": int(fi.get("last_volume") or fi.get("lastVolume") or 0),
+                "market_cap": int(fi.get("market_cap") or fi.get("marketCap") or 0),
+                "pe_ratio": 0,
+                "week_52_high": float(fi.get("year_high") or fi.get("yearHigh") or 0),
+                "week_52_low": float(fi.get("year_low") or fi.get("yearLow") or 0),
+                "sector": "N/A",
+                "industry": "N/A",
+            }
+    except Exception:
+        pass
+
     info = stock.info
     name = info.get("shortName") or info.get("longName")
     if not name:
