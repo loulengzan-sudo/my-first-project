@@ -293,7 +293,7 @@ function renderPredictionExtras(data) {
     const hasConfidence = typeof data.confidence === 'number';
     const hasTrend = data.trend_analysis && typeof data.trend_analysis === 'object';
     const hasSR = data.support_resistance && typeof data.support_resistance === 'object';
-    const hasRisk = typeof data.risk_level === 'string';
+    const hasRisk = data.risk_assessment && typeof data.risk_assessment === 'object';
 
     if (!hasConfidence && !hasTrend && !hasSR && !hasRisk) {
         extrasDiv.style.display = 'none';
@@ -310,7 +310,7 @@ function renderPredictionExtras(data) {
             <h6>置信度</h6>
             <div class="d-flex align-items-center">
                 <div class="progress flex-grow-1" style="height: 20px;">
-                    <div class="progress-bar ${barColor}" role="progressbar" style="width: ${score}%;" aria-valuenow="${score}" aria-valuemin="0" aria-valuemax="100">${score}%</div>
+                    <div class="progress-bar ${barColor}" role="progressbar" style="width: ${score}%;">${score}%</div>
                 </div>
                 <span class="ms-2 fw-bold">${score}/100</span>
             </div>
@@ -319,21 +319,31 @@ function renderPredictionExtras(data) {
 
     // Risk assessment
     if (hasRisk) {
-        const riskLower = data.risk_level.toLowerCase();
+        const r = data.risk_assessment;
+        const riskLower = (r.level || '').toLowerCase();
         const riskBadge = riskLower === 'low' ? 'bg-success' : riskLower === 'high' ? 'bg-danger' : 'bg-warning text-dark';
         html += `<div class="mb-3">
             <h6>风险评估</h6>
-            <span class="badge ${riskBadge} fs-6">${data.risk_level}</span>
+            <div class="d-flex flex-wrap gap-3 align-items-center">
+                <span class="badge ${riskBadge} fs-6">${r.level || '-'}</span>
+                ${r.daily_volatility_pct != null ? `<small class="text-muted">日波动率: ${r.daily_volatility_pct}%</small>` : ''}
+                ${r.atr_pct != null ? `<small class="text-muted">ATR: ${r.atr_pct}%</small>` : ''}
+                ${r.market_stress ? `<small class="text-muted">市场压力: ${r.market_stress}</small>` : ''}
+                ${r.trend_strength ? `<small class="text-muted">趋势强度: ${r.trend_strength}</small>` : ''}
+            </div>
         </div>`;
     }
 
     // Trend analysis
     if (hasTrend) {
         const ta = data.trend_analysis;
-        const trendBadge = (label) => {
-            if (!label) return '';
+        const trendBadge = (item) => {
+            if (!item) return '';
+            const label = typeof item === 'string' ? item : (item.label || '');
             const l = label.toLowerCase();
-            const cls = l === 'bullish' ? 'bg-success' : l === 'bearish' ? 'bg-danger' : 'bg-secondary';
+            let cls = 'bg-secondary';
+            if (l.includes('uptrend') || l === 'bullish') cls = 'bg-success';
+            else if (l.includes('downtrend') || l === 'bearish') cls = 'bg-danger';
             return `<span class="badge ${cls}">${label}</span>`;
         };
         html += `<div class="mb-3">
@@ -344,7 +354,9 @@ function renderPredictionExtras(data) {
         if (ta.long_term) html += `<span class="text-muted small me-1 ms-2">长期</span>${trendBadge(ta.long_term)}`;
         html += `</div>`;
         if (ta.alignment) {
-            html += `<p class="text-muted small mt-1 mb-0">${ta.alignment}</p>`;
+            const alignText = ta.alignment === 'aligned' ? '三个时间框架方向一致' :
+                              ta.alignment === 'mixed' ? '时间框架方向分歧' : ta.alignment;
+            html += `<p class="text-muted small mt-1 mb-0">${alignText}</p>`;
         }
         html += `</div>`;
     }
@@ -352,14 +364,16 @@ function renderPredictionExtras(data) {
     // Support / Resistance
     if (hasSR) {
         const sr = data.support_resistance;
+        const supports = Array.isArray(sr.support) ? sr.support : [];
+        const resistances = Array.isArray(sr.resistance) ? sr.resistance : [];
         const fmt = (v) => v != null ? `$${Number(v).toFixed(2)}` : '-';
         html += `<div class="mb-3">
             <h6>支撑/阻力位</h6>
-            <table class="table table-sm table-bordered mb-0" style="max-width: 320px;">
-                <thead class="table-light"><tr><th></th><th class="text-end">第一档</th><th class="text-end">第二档</th></tr></thead>
+            <table class="table table-sm table-bordered mb-0" style="max-width: 360px;">
+                <thead class="table-light"><tr><th></th><th class="text-end">第一档</th><th class="text-end">第二档</th><th class="text-end">第三档</th></tr></thead>
                 <tbody>
-                    <tr><td class="text-danger fw-bold">阻力</td><td class="text-end">${fmt(sr.resistance_1)}</td><td class="text-end">${fmt(sr.resistance_2)}</td></tr>
-                    <tr><td class="text-success fw-bold">支撑</td><td class="text-end">${fmt(sr.support_1)}</td><td class="text-end">${fmt(sr.support_2)}</td></tr>
+                    <tr><td class="text-danger fw-bold">阻力</td><td class="text-end">${fmt(resistances[0])}</td><td class="text-end">${fmt(resistances[1])}</td><td class="text-end">${fmt(resistances[2])}</td></tr>
+                    <tr><td class="text-success fw-bold">支撑</td><td class="text-end">${fmt(supports[0])}</td><td class="text-end">${fmt(supports[1])}</td><td class="text-end">${fmt(supports[2])}</td></tr>
                 </tbody>
             </table>
         </div>`;
