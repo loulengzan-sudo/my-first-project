@@ -2,7 +2,7 @@ import pandas as pd
 import time
 import os
 
-DEMO_MODE = os.environ.get("STOCK_DEMO_MODE", "auto")
+DEMO_MODE = os.environ.get("STOCK_DEMO_MODE", "false")
 
 _cache = {}
 _cache_timestamps = {}
