@@ -2,6 +2,7 @@ import pandas as pd
 import pickle
 import time
 import os
+import requests
 
 DEMO_MODE = os.environ.get("STOCK_DEMO_MODE", "auto")
 
@@ -62,58 +63,68 @@ def _get_cached(key, fetcher):
     raise RuntimeError(f"No data available for {key}")
 
 
-def _batch_download(tickers, period="5d"):
-    """Download multiple tickers in ONE API call using yf.download()."""
-    import yfinance as yf
+# ---- Stooq: free, no API key, no rate limit ----
+
+def _fetch_stooq(ticker, days=504):
+    """Fetch historical data from Stooq (free, no key, no rate limit)."""
+    stooq_ticker = f"{ticker.upper()}.US"
+    url = f"https://stooq.com/q/d/l/?s={stooq_ticker}&i=d"
     try:
-        df = yf.download(tickers, period=period, group_by="ticker", progress=False)
-        if df.empty:
+        df = pd.read_csv(url)
+        if df.empty or "Close" not in df.columns:
             return None
+        df["Date"] = pd.to_datetime(df["Date"])
+        df = df.set_index("Date").sort_index()
+        if len(df) > days:
+            df = df.iloc[-days:]
         return df
     except Exception:
         return None
 
 
-def _extract_info_from_history(ticker, hist_df):
-    """Extract stock info from historical price data (no extra API call needed)."""
+def _fetch_yfinance(ticker, period="5d"):
+    """Fetch data from yfinance (may be rate-limited)."""
     try:
-        if hist_df is None or hist_df.empty:
-            return None
-        if len(hist_df.columns.names) > 1 and ticker in hist_df.columns.get_level_values(0):
-            data = hist_df[ticker].dropna(how="all")
-        else:
-            data = hist_df
-
-        if data.empty or len(data) < 2:
-            return None
-
-        latest = data.iloc[-1]
-        prev = data.iloc[-2]
-
-        price = float(latest["Close"])
-        prev_close = float(prev["Close"])
-
-        if price <= 0:
-            return None
-
-        return {
-            "ticker": ticker,
-            "name": ticker,
-            "price": round(price, 2),
-            "previous_close": round(prev_close, 2),
-            "open": round(float(latest["Open"]), 2),
-            "day_high": round(float(latest["High"]), 2),
-            "day_low": round(float(latest["Low"]), 2),
-            "volume": int(latest["Volume"]),
-            "market_cap": 0,
-            "pe_ratio": 0,
-            "week_52_high": 0,
-            "week_52_low": 0,
-            "sector": "N/A",
-            "industry": "N/A",
-        }
+        import yfinance as yf
+        df = yf.download(ticker, period=period, progress=False)
+        if df is not None and not df.empty:
+            df.index = df.index.tz_localize(None) if df.index.tz else df.index
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+            return df
     except Exception:
+        pass
+    return None
+
+
+def _info_from_df(ticker, df):
+    """Extract stock info dict from a DataFrame with OHLCV data."""
+    if df is None or df.empty or len(df) < 2:
         return None
+    latest = df.iloc[-1]
+    prev = df.iloc[-2]
+
+    price = float(latest["Close"])
+    prev_close = float(prev["Close"])
+    if price <= 0:
+        return None
+
+    return {
+        "ticker": ticker.upper(),
+        "name": ticker.upper(),
+        "price": round(price, 2),
+        "previous_close": round(prev_close, 2),
+        "open": round(float(latest["Open"]), 2),
+        "day_high": round(float(latest["High"]), 2),
+        "day_low": round(float(latest["Low"]), 2),
+        "volume": int(latest["Volume"]),
+        "market_cap": 0,
+        "pe_ratio": 0,
+        "week_52_high": round(float(df["High"].iloc[-252:].max()), 2) if len(df) >= 252 else round(float(df["High"].max()), 2),
+        "week_52_low": round(float(df["Low"].iloc[-252:].min()), 2) if len(df) >= 252 else round(float(df["Low"].min()), 2),
+        "sector": "N/A",
+        "industry": "N/A",
+    }
 
 
 def get_stock_info(ticker):
@@ -122,14 +133,18 @@ def get_stock_info(ticker):
         return get_mock_stock_info(ticker)
 
     def fetch():
-        try:
-            import yfinance as yf
-            df = yf.download(ticker, period="5d", progress=False)
-            result = _extract_info_from_history(ticker, df)
-            if result:
-                return result
-        except Exception:
-            pass
+        # Try yfinance first
+        df = _fetch_yfinance(ticker, period="5d")
+        info = _info_from_df(ticker, df)
+        if info:
+            return info
+
+        # Fallback to Stooq
+        df = _fetch_stooq(ticker, days=10)
+        info = _info_from_df(ticker, df)
+        if info:
+            return info
+
         from services.mock_data import get_mock_stock_info
         return get_mock_stock_info(ticker)
 
@@ -142,46 +157,60 @@ def get_stock_history(ticker, period="1y", interval="1d"):
         days_map = {"1mo": 22, "3mo": 66, "6mo": 126, "1y": 252, "2y": 504, "5y": 1260}
         return generate_mock_history(ticker, days_map.get(period, 252))
 
+    days_map = {"1mo": 22, "3mo": 66, "6mo": 126, "1y": 252, "2y": 504, "5y": 1260}
+    days = days_map.get(period, 252)
+
     def fetch():
-        try:
-            import yfinance as yf
-            df = yf.download(ticker, period=period, interval=interval, progress=False)
-            if not df.empty:
-                df.index = df.index.tz_localize(None) if df.index.tz else df.index
-                if isinstance(df.columns, pd.MultiIndex):
-                    df.columns = df.columns.get_level_values(0)
-                return df
-        except Exception:
-            pass
+        # Try yfinance first
+        df = _fetch_yfinance(ticker, period=period)
+        if df is not None and not df.empty:
+            return df
+
+        # Fallback to Stooq
+        df = _fetch_stooq(ticker, days=days)
+        if df is not None and not df.empty:
+            return df
+
         from services.mock_data import generate_mock_history
-        days_map = {"1mo": 22, "3mo": 66, "6mo": 126, "1y": 252, "2y": 504, "5y": 1260}
-        return generate_mock_history(ticker, days_map.get(period, 252))
+        return generate_mock_history(ticker, days)
 
     return _get_cached(f"hist_{ticker}_{period}_{interval}", fetch)
 
 
 def get_market_overview(tickers):
-    """Fetch all tickers in ONE batch call, then extract info per ticker."""
     cache_key = f"market_overview_{'_'.join(tickers)}"
     now = time.time()
     if cache_key in _cache and now - _cache_timestamps.get(cache_key, 0) < CACHE_TTL:
         return _cache[cache_key]
 
+    # Try batch yfinance download first (1 API call for all tickers)
     batch_df = None
     if DEMO_MODE != "true":
-        batch_df = _batch_download(tickers, period="5d")
+        batch_df = _fetch_yfinance(tickers, period="5d") if len(tickers) > 1 else None
 
     results = []
     for ticker in tickers:
         info = None
-        if batch_df is not None:
-            info = _extract_info_from_history(ticker, batch_df)
 
+        # Try extracting from batch download
+        if batch_df is not None and not batch_df.empty:
+            try:
+                if isinstance(batch_df.columns, pd.MultiIndex) and ticker in batch_df.columns.get_level_values(1):
+                    ticker_df = batch_df.xs(ticker, level=1, axis=1).dropna(how="all")
+                    info = _info_from_df(ticker, ticker_df)
+            except Exception:
+                pass
+
+        # Try individual Stooq fetch
         if info is None:
-            disk_val = _load_disk(f"info_{ticker}")
-            if disk_val:
-                info = disk_val
+            stooq_df = _fetch_stooq(ticker, days=10)
+            info = _info_from_df(ticker, stooq_df)
 
+        # Try disk cache
+        if info is None:
+            info = _load_disk(f"info_{ticker}")
+
+        # Last resort: mock
         if info is None:
             from services.mock_data import get_mock_stock_info
             info = get_mock_stock_info(ticker)
@@ -206,15 +235,13 @@ def get_market_overview(tickers):
 
 
 def search_ticker(query):
-    try:
-        import yfinance as yf
-        df = yf.download(query.upper(), period="5d", progress=False)
-        if not df.empty:
-            return [{"ticker": query.upper(), "name": query.upper()}]
-    except Exception:
-        pass
-    from services.mock_data import MOCK_STOCKS
     q = query.upper()
+    # Quick test: try Stooq (no rate limit)
+    df = _fetch_stooq(q, days=5)
+    if df is not None and not df.empty:
+        return [{"ticker": q, "name": q}]
+
+    from services.mock_data import MOCK_STOCKS
     results = []
     for t, info in MOCK_STOCKS.items():
         if q in t or q in info["name"].upper():
@@ -224,6 +251,7 @@ def search_ticker(query):
 
 def get_intraday_data(ticker):
     def fetch():
+        # Intraday only available from yfinance
         try:
             import yfinance as yf
             df = yf.download(ticker, period="1d", interval="5m", progress=False)
