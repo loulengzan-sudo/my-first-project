@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="fas fa-globe"></i> 美股市场概览</h2>
+        <p class="text-muted">实时追踪热门美股行情 · 数据来源: Yahoo Finance</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">市场行情</h5>
+                    <button class="btn btn-sm btn-outline-primary" id="refreshBtn">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="marketTable">
+                        <thead>
+                            <tr>
+                                <th>代码</th>
+                                <th>名称</th>
+                                <th class="text-end">价格</th>
+                                <th class="text-end">涨跌</th>
+                                <th class="text-end">涨跌幅</th>
+                                <th class="text-end">成交量</th>
+                                <th class="text-end">市值</th>
+                                <th class="text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="marketBody">
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                    <p class="mt-2 text-muted">加载市场数据中...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-newspaper"></i> 最新财经新闻</h5>
+                <div id="newsContainer">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2 text-muted">加载新闻中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-chart-pie"></i> 涨跌分布</h5>
+                <div id="sentimentChart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DEFAULT_TICKERS = {{ tickers | tojson }};
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadMarketData();
+    loadNews();
+});
+
+document.getElementById('refreshBtn').addEventListener('click', loadMarketData);
+
+function loadMarketData() {
+    const tbody = document.getElementById('marketBody');
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5">
+        <div class="spinner-border text-primary"></div>
+        <p class="mt-2 text-muted">加载中...</p></td></tr>`;
+
+    fetch(`/api/market?tickers=${DEFAULT_TICKERS.join(',')}`)
+        .then(r => r.json())
+        .then(data => {
+            tbody.innerHTML = '';
+            let up = 0, down = 0, flat = 0;
+            data.forEach(stock => {
+                if (stock.error) return;
+                const changeClass = stock.change_pct > 0 ? 'text-success' :
+                                   stock.change_pct < 0 ? 'text-danger' : '';
+                const arrow = stock.change_pct > 0 ? '▲' : stock.change_pct < 0 ? '▼' : '';
+                if (stock.change_pct > 0) up++;
+                else if (stock.change_pct < 0) down++;
+                else flat++;
+
+                tbody.innerHTML += `
+                    <tr class="stock-row" style="cursor:pointer" onclick="window.location='/stock/${stock.ticker}'">
+                        <td><strong>${stock.ticker}</strong></td>
+                        <td>${stock.name || stock.ticker}</td>
+                        <td class="text-end">$${stock.price.toFixed(2)}</td>
+                        <td class="text-end ${changeClass}">${arrow} ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}</td>
+                        <td class="text-end ${changeClass}">${stock.change_pct >= 0 ? '+' : ''}${stock.change_pct.toFixed(2)}%</td>
+                        <td class="text-end">${formatVolume(stock.volume)}</td>
+                        <td class="text-end">${formatMarketCap(stock.market_cap)}</td>
+                        <td class="text-center">
+                            <a href="/stock/${stock.ticker}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-chart-line"></i>
+                            </a>
+                        </td>
+                    </tr>`;
+            });
+            renderPieChart(up, down, flat);
+        })
+        .catch(() => {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-3">加载失败，请重试</td></tr>`;
+        });
+}
+
+function loadNews() {
+    fetch('/api/stock/AAPL/news')
+        .then(r => r.json())
+        .then(news => {
+            const container = document.getElementById('newsContainer');
+            if (!news.length) {
+                container.innerHTML = '<p class="text-muted">暂无新闻</p>';
+                return;
+            }
+            container.innerHTML = news.slice(0, 10).map(n => {
+                const sentimentBadge = n.sentiment ?
+                    `<span class="badge ${n.sentiment.label === 'Positive' ? 'bg-success' :
+                      n.sentiment.label === 'Negative' ? 'bg-danger' : 'bg-secondary'}">${n.sentiment.label}</span>` : '';
+                return `
+                    <div class="news-item border-bottom py-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <a href="${n.link}" target="_blank" class="text-decoration-none">
+                                    <strong>${n.title}</strong>
+                                </a>
+                                <p class="text-muted small mb-0 mt-1">${n.summary || ''}</p>
+                            </div>
+                            ${sentimentBadge}
+                        </div>
+                        <small class="text-muted">${n.source} · ${n.published}</small>
+                    </div>`;
+            }).join('');
+        })
+        .catch(() => {
+            document.getElementById('newsContainer').innerHTML = '<p class="text-muted">新闻加载失败</p>';
+        });
+}
+
+function renderPieChart(up, down, flat) {
+    Plotly.newPlot('sentimentChart', [{
+        values: [up, down, flat],
+        labels: ['上涨', '下跌', '持平'],
+        type: 'pie',
+        marker: { colors: ['#28a745', '#dc3545', '#6c757d'] },
+        textinfo: 'label+value',
+        hole: 0.4,
+    }], {
+        margin: { t: 10, b: 10, l: 10, r: 10 },
+        showlegend: true,
+        legend: { orientation: 'h', y: -0.1 },
+    }, { responsive: true, displayModeBar: false });
+}
+
+function formatVolume(v) {
+    if (!v) return '-';
+    if (v >= 1e9) return (v / 1e9).toFixed(1) + 'B';
+    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+    if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+    return v.toString();
+}
+
+function formatMarketCap(v) {
+    if (!v) return '-';
+    if (v >= 1e12) return '$' + (v / 1e12).toFixed(2) + 'T';
+    if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
+    if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+    return '$' + v;
+}
+</script>
+{% endblock %}

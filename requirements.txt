@@ -1,0 +1,9 @@
+flask==3.1.1
+yfinance==0.2.54
+pandas==2.2.3
+numpy==2.2.6
+scikit-learn==1.6.1
+textblob==0.18.0
+plotly==6.1.2
+apscheduler==3.11.0
+requests==2.32.3

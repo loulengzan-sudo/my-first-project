@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}{{ ticker }} - StockPulse{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <a href="/" class="text-decoration-none"><i class="fas fa-arrow-left"></i> 返回市场概览</a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div id="stockHeader">
+            <h2 id="stockName">{{ ticker }}</h2>
+            <div class="d-flex align-items-baseline gap-3">
+                <h3 id="stockPrice" class="mb-0">--</h3>
+                <span id="stockChange" class="fs-5">--</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 text-end">
+        <div id="sentimentBadge" class="mb-2"></div>
+        <button class="btn btn-primary" id="predictBtn">
+            <i class="fas fa-magic"></i> 运行预测
+        </button>
+    </div>
+</div>
+
+<!-- Stock Info Cards -->
+<div class="row mb-4" id="infoCards">
+    <div class="col-md-2 col-4">
+        <div class="card text-center p-2">
+            <small class="text-muted">开盘</small>
+            <strong id="infoOpen">--</strong>
+        </div>
+    </div>
+    <div class="col-md-2 col-4">
+        <div class="card text-center p-2">
+            <small class="text-muted">最高</small>
+            <strong id="infoHigh">--</strong>
+        </div>
+    </div>
+    <div class="col-md-2 col-4">
+        <div class="card text-center p-2">
+            <small class="text-muted">最低</small>
+            <strong id="infoLow">--</strong>
+        </div>
+    </div>
+    <div class="col-md-2 col-4">
+        <div class="card text-center p-2">
+            <small class="text-muted">成交量</small>
+            <strong id="infoVolume">--</strong>
+        </div>
+    </div>
+    <div class="col-md-2 col-4">
+        <div class="card text-center p-2">
+            <small class="text-muted">市盈率</small>
+            <strong id="infoPE">--</strong>
+        </div>
+    </div>
+    <div class="col-md-2 col-4">
+        <div class="card text-center p-2">
+            <small class="text-muted">市值</small>
+            <strong id="infoCap">--</strong>
+        </div>
+    </div>
+</div>
+
+<!-- Chart -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0"><i class="fas fa-chart-area"></i> 价格走势</h5>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-sm btn-outline-secondary period-btn" data-period="1mo">1月</button>
+                        <button class="btn btn-sm btn-outline-secondary period-btn" data-period="3mo">3月</button>
+                        <button class="btn btn-sm btn-outline-secondary period-btn" data-period="6mo">6月</button>
+                        <button class="btn btn-sm btn-outline-secondary period-btn active" data-period="1y">1年</button>
+                        <button class="btn btn-sm btn-outline-secondary period-btn" data-period="2y">2年</button>
+                    </div>
+                </div>
+                <div id="priceChart" style="height: 450px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Prediction + News -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-crystal-ball"></i> AI 预测 (1-7天)</h5>
+                <div id="predictionContainer">
+                    <p class="text-muted">点击上方 "运行预测" 按钮开始分析</p>
+                </div>
+                <div id="predictionChart" style="height: 300px; display: none;"></div>
+                <div id="topFactors" style="display: none;" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-newspaper"></i> 相关新闻 & 情绪</h5>
+                <div id="newsContainer">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TICKER = '{{ ticker }}';
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadStockInfo();
+    loadChart('1y');
+    loadNews();
+    loadSentiment();
+});
+
+document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        loadChart(this.dataset.period);
+    });
+});
+
+document.getElementById('predictBtn').addEventListener('click', runPrediction);
+
+function loadStockInfo() {
+    fetch(`/api/stock/${TICKER}`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('stockName').textContent = `${data.name} (${TICKER})`;
+            document.getElementById('stockPrice').textContent = `$${data.price.toFixed(2)}`;
+            const change = data.price - data.previous_close;
+            const changePct = (change / data.previous_close * 100);
+            const el = document.getElementById('stockChange');
+            el.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%)`;
+            el.className = `fs-5 ${change >= 0 ? 'text-success' : 'text-danger'}`;
+
+            document.getElementById('infoOpen').textContent = `$${data.open.toFixed(2)}`;
+            document.getElementById('infoHigh').textContent = `$${data.day_high.toFixed(2)}`;
+            document.getElementById('infoLow').textContent = `$${data.day_low.toFixed(2)}`;
+            document.getElementById('infoVolume').textContent = formatVolume(data.volume);
+            document.getElementById('infoPE').textContent = data.pe_ratio ? data.pe_ratio.toFixed(1) : '-';
+            document.getElementById('infoCap').textContent = formatMarketCap(data.market_cap);
+        });
+}
+
+function loadChart(period) {
+    fetch(`/api/stock/${TICKER}/history?period=${period}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) return;
+            const candlestick = {
+                x: data.dates,
+                open: data.open,
+                high: data.high,
+                low: data.low,
+                close: data.close,
+                type: 'candlestick',
+                name: TICKER,
+                increasing: { line: { color: '#28a745' } },
+                decreasing: { line: { color: '#dc3545' } },
+            };
+            const volume = {
+                x: data.dates,
+                y: data.volume,
+                type: 'bar',
+                name: 'Volume',
+                yaxis: 'y2',
+                marker: {
+                    color: data.close.map((c, i) =>
+                        i > 0 && c >= data.close[i-1] ? 'rgba(40,167,69,0.3)' : 'rgba(220,53,69,0.3)'
+                    ),
+                },
+            };
+            Plotly.newPlot('priceChart', [candlestick, volume], {
+                xaxis: { rangeslider: { visible: false }, type: 'date' },
+                yaxis: { title: '价格 ($)', side: 'right', domain: [0.3, 1] },
+                yaxis2: { title: '成交量', side: 'left', domain: [0, 0.25] },
+                margin: { t: 10, r: 60, l: 60, b: 40 },
+                showlegend: false,
+                plot_bgcolor: '#fafafa',
+            }, { responsive: true, displayModeBar: false });
+        });
+}
+
+function runPrediction() {
+    const container = document.getElementById('predictionContainer');
+    const btn = document.getElementById('predictBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 分析中...';
+    container.innerHTML = `<div class="text-center py-3">
+        <div class="spinner-border text-primary"></div>
+        <p class="mt-2 text-muted">正在训练模型并预测，请稍候...</p>
+    </div>`;
+
+    fetch(`/api/stock/${TICKER}/predict?days=7`)
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-magic"></i> 重新预测';
+
+            if (data.error) {
+                container.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                return;
+            }
+
+            let html = `<div class="alert alert-warning small"><i class="fas fa-exclamation-triangle"></i> ${data.disclaimer}</div>`;
+            html += '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>天数</th><th class="text-end">预测价</th><th class="text-end">涨跌幅</th><th class="text-center">方向</th></tr></thead><tbody>';
+            data.predictions.forEach(p => {
+                const cls = p.direction === 'up' ? 'text-success' : 'text-danger';
+                const icon = p.direction === 'up' ? '▲' : '▼';
+                html += `<tr>
+                    <td>第${p.day}天</td>
+                    <td class="text-end">$${p.predicted_price.toFixed(2)}</td>
+                    <td class="text-end ${cls}">${p.predicted_change_pct >= 0 ? '+' : ''}${p.predicted_change_pct.toFixed(2)}%</td>
+                    <td class="text-center ${cls}">${icon}</td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+
+            if (data.sentiment) {
+                const sLabel = data.sentiment.label;
+                const sBadge = sLabel === 'Bullish' ? 'bg-success' : sLabel === 'Bearish' ? 'bg-danger' : 'bg-secondary';
+                html += `<p class="mb-1">新闻情绪: <span class="badge ${sBadge}">${sLabel}</span> (${data.sentiment.article_count} 篇文章)</p>`;
+            }
+            container.innerHTML = html;
+
+            // Prediction chart
+            const chartDiv = document.getElementById('predictionChart');
+            chartDiv.style.display = 'block';
+            const days = data.predictions.map(p => `第${p.day}天`);
+            const prices = data.predictions.map(p => p.predicted_price);
+            Plotly.newPlot(chartDiv, [{
+                x: days, y: prices, type: 'scatter', mode: 'lines+markers',
+                line: { color: '#0d6efd', width: 2 },
+                marker: { size: 8 },
+                name: '预测价',
+            }, {
+                x: days, y: Array(days.length).fill(data.current_price),
+                type: 'scatter', mode: 'lines',
+                line: { color: '#6c757d', dash: 'dash' },
+                name: '当前价',
+            }], {
+                margin: { t: 10, r: 20, l: 50, b: 30 },
+                yaxis: { title: '价格 ($)' },
+                showlegend: true,
+                legend: { orientation: 'h', y: 1.1 },
+            }, { responsive: true, displayModeBar: false });
+
+            // Top factors
+            if (data.top_factors) {
+                const factorsDiv = document.getElementById('topFactors');
+                factorsDiv.style.display = 'block';
+                factorsDiv.innerHTML = '<h6>关键影响因素</h6>' + data.top_factors.map(f =>
+                    `<div class="d-flex justify-content-between">
+                        <span>${f.feature}</span>
+                        <div class="progress flex-grow-1 mx-2 mt-1" style="height: 16px;">
+                            <div class="progress-bar bg-info" style="width: ${(f.importance * 100 / data.top_factors[0].importance).toFixed(0)}%"></div>
+                        </div>
+                        <small>${(f.importance * 100).toFixed(1)}%</small>
+                    </div>`
+                ).join('');
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-magic"></i> 运行预测';
+            container.innerHTML = '<div class="alert alert-danger">预测失败，请重试</div>';
+        });
+}
+
+function loadNews() {
+    fetch(`/api/stock/${TICKER}/news`)
+        .then(r => r.json())
+        .then(news => {
+            const container = document.getElementById('newsContainer');
+            if (!news.length) {
+                container.innerHTML = '<p class="text-muted">暂无相关新闻</p>';
+                return;
+            }
+            container.innerHTML = news.slice(0, 8).map(n => {
+                const badge = n.sentiment ?
+                    `<span class="badge ${n.sentiment.label === 'Positive' ? 'bg-success' :
+                      n.sentiment.label === 'Negative' ? 'bg-danger' : 'bg-secondary'} ms-2">${n.sentiment.label}</span>` : '';
+                return `<div class="border-bottom py-2">
+                    <a href="${n.link}" target="_blank" class="text-decoration-none small"><strong>${n.title}</strong></a>${badge}
+                    <br><small class="text-muted">${n.source} · ${n.published}</small>
+                </div>`;
+            }).join('');
+        })
+        .catch(() => {
+            document.getElementById('newsContainer').innerHTML = '<p class="text-muted">新闻加载失败</p>';
+        });
+}
+
+function loadSentiment() {
+    fetch(`/api/stock/${TICKER}/sentiment`)
+        .then(r => r.json())
+        .then(data => {
+            const div = document.getElementById('sentimentBadge');
+            const cls = data.label === 'Bullish' ? 'bg-success' : data.label === 'Bearish' ? 'bg-danger' : 'bg-secondary';
+            div.innerHTML = `<span class="badge ${cls} fs-6">市场情绪: ${data.label} (${data.score})</span>`;
+        });
+}
+
+function formatVolume(v) {
+    if (!v) return '-';
+    if (v >= 1e9) return (v / 1e9).toFixed(1) + 'B';
+    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+    if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+    return v.toString();
+}
+
+function formatMarketCap(v) {
+    if (!v) return '-';
+    if (v >= 1e12) return '$' + (v / 1e12).toFixed(2) + 'T';
+    if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
+    if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+    return '$' + v;
+}
+</script>
+{% endblock %}
