@@ -10,8 +10,8 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 
 _cache = {}
 _cache_timestamps = {}
-CACHE_TTL = 1800  # 30 minutes to reduce Yahoo rate-limit hits
-DISK_CACHE_TTL = 86400  # 1 day disk cache as fallback
+CACHE_TTL = 1800
+DISK_CACHE_TTL = 86400
 
 
 def _cache_file(key):
@@ -29,7 +29,7 @@ def _load_disk(key):
         if time.time() - ts < DISK_CACHE_TTL:
             return value
     except Exception:
-        return None
+        pass
     return None
 
 
@@ -62,53 +62,58 @@ def _get_cached(key, fetcher):
     raise RuntimeError(f"No data available for {key}")
 
 
-def _try_real_stock_info(ticker):
+def _batch_download(tickers, period="5d"):
+    """Download multiple tickers in ONE API call using yf.download()."""
     import yfinance as yf
-    stock = yf.Ticker(ticker)
     try:
-        fi = stock.fast_info
-        last_price = float(fi.get("last_price") or fi.get("lastPrice") or 0)
-        prev_close = float(fi.get("previous_close") or fi.get("previousClose") or 0)
-        if last_price and prev_close:
-            return {
-                "ticker": ticker,
-                "name": ticker,
-                "price": last_price,
-                "previous_close": prev_close,
-                "open": float(fi.get("open") or 0),
-                "day_high": float(fi.get("day_high") or fi.get("dayHigh") or 0),
-                "day_low": float(fi.get("day_low") or fi.get("dayLow") or 0),
-                "volume": int(fi.get("last_volume") or fi.get("lastVolume") or 0),
-                "market_cap": int(fi.get("market_cap") or fi.get("marketCap") or 0),
-                "pe_ratio": 0,
-                "week_52_high": float(fi.get("year_high") or fi.get("yearHigh") or 0),
-                "week_52_low": float(fi.get("year_low") or fi.get("yearLow") or 0),
-                "sector": "N/A",
-                "industry": "N/A",
-            }
+        df = yf.download(tickers, period=period, group_by="ticker", progress=False)
+        if df.empty:
+            return None
+        return df
     except Exception:
-        pass
-
-    info = stock.info
-    name = info.get("shortName") or info.get("longName")
-    if not name:
         return None
-    return {
-        "ticker": ticker,
-        "name": name,
-        "price": info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose", 0),
-        "previous_close": info.get("previousClose", 0),
-        "open": info.get("open") or info.get("regularMarketOpen", 0),
-        "day_high": info.get("dayHigh") or info.get("regularMarketDayHigh", 0),
-        "day_low": info.get("dayLow") or info.get("regularMarketDayLow", 0),
-        "volume": info.get("volume") or info.get("regularMarketVolume", 0),
-        "market_cap": info.get("marketCap", 0),
-        "pe_ratio": info.get("trailingPE", 0),
-        "week_52_high": info.get("fiftyTwoWeekHigh", 0),
-        "week_52_low": info.get("fiftyTwoWeekLow", 0),
-        "sector": info.get("sector", "N/A"),
-        "industry": info.get("industry", "N/A"),
-    }
+
+
+def _extract_info_from_history(ticker, hist_df):
+    """Extract stock info from historical price data (no extra API call needed)."""
+    try:
+        if hist_df is None or hist_df.empty:
+            return None
+        if len(hist_df.columns.names) > 1 and ticker in hist_df.columns.get_level_values(0):
+            data = hist_df[ticker].dropna(how="all")
+        else:
+            data = hist_df
+
+        if data.empty or len(data) < 2:
+            return None
+
+        latest = data.iloc[-1]
+        prev = data.iloc[-2]
+
+        price = float(latest["Close"])
+        prev_close = float(prev["Close"])
+
+        if price <= 0:
+            return None
+
+        return {
+            "ticker": ticker,
+            "name": ticker,
+            "price": round(price, 2),
+            "previous_close": round(prev_close, 2),
+            "open": round(float(latest["Open"]), 2),
+            "day_high": round(float(latest["High"]), 2),
+            "day_low": round(float(latest["Low"]), 2),
+            "volume": int(latest["Volume"]),
+            "market_cap": 0,
+            "pe_ratio": 0,
+            "week_52_high": 0,
+            "week_52_low": 0,
+            "sector": "N/A",
+            "industry": "N/A",
+        }
+    except Exception:
+        return None
 
 
 def get_stock_info(ticker):
@@ -118,7 +123,9 @@ def get_stock_info(ticker):
 
     def fetch():
         try:
-            result = _try_real_stock_info(ticker)
+            import yfinance as yf
+            df = yf.download(ticker, period="5d", progress=False)
+            result = _extract_info_from_history(ticker, df)
             if result:
                 return result
         except Exception:
@@ -138,10 +145,11 @@ def get_stock_history(ticker, period="1y", interval="1d"):
     def fetch():
         try:
             import yfinance as yf
-            stock = yf.Ticker(ticker)
-            df = stock.history(period=period, interval=interval)
+            df = yf.download(ticker, period=period, interval=interval, progress=False)
             if not df.empty:
                 df.index = df.index.tz_localize(None) if df.index.tz else df.index
+                if isinstance(df.columns, pd.MultiIndex):
+                    df.columns = df.columns.get_level_values(0)
                 return df
         except Exception:
             pass
@@ -153,39 +161,56 @@ def get_stock_history(ticker, period="1y", interval="1d"):
 
 
 def get_market_overview(tickers):
+    """Fetch all tickers in ONE batch call, then extract info per ticker."""
+    cache_key = f"market_overview_{'_'.join(tickers)}"
+    now = time.time()
+    if cache_key in _cache and now - _cache_timestamps.get(cache_key, 0) < CACHE_TTL:
+        return _cache[cache_key]
+
+    batch_df = None
+    if DEMO_MODE != "true":
+        batch_df = _batch_download(tickers, period="5d")
+
     results = []
     for ticker in tickers:
-        try:
-            info = get_stock_info(ticker)
-            price = info["price"]
-            prev = info["previous_close"]
-            change = price - prev if prev else 0
-            change_pct = (change / prev * 100) if prev else 0
-            results.append({
-                **info,
-                "change": round(change, 2),
-                "change_pct": round(change_pct, 2),
-            })
-        except Exception:
-            results.append({
-                "ticker": ticker,
-                "name": ticker,
-                "price": 0,
-                "change": 0,
-                "change_pct": 0,
-                "error": True,
-            })
+        info = None
+        if batch_df is not None:
+            info = _extract_info_from_history(ticker, batch_df)
+
+        if info is None:
+            disk_val = _load_disk(f"info_{ticker}")
+            if disk_val:
+                info = disk_val
+
+        if info is None:
+            from services.mock_data import get_mock_stock_info
+            info = get_mock_stock_info(ticker)
+
+        price = info["price"]
+        prev = info["previous_close"]
+        change = price - prev if prev else 0
+        change_pct = (change / prev * 100) if prev else 0
+        results.append({
+            **info,
+            "change": round(change, 2),
+            "change_pct": round(change_pct, 2),
+        })
+
+        _cache[f"info_{ticker}"] = info
+        _cache_timestamps[f"info_{ticker}"] = now
+        _save_disk(f"info_{ticker}", info)
+
+    _cache[cache_key] = results
+    _cache_timestamps[cache_key] = now
     return results
 
 
 def search_ticker(query):
     try:
         import yfinance as yf
-        stock = yf.Ticker(query.upper())
-        info = stock.info
-        name = info.get("shortName") or info.get("longName")
-        if name:
-            return [{"ticker": query.upper(), "name": name}]
+        df = yf.download(query.upper(), period="5d", progress=False)
+        if not df.empty:
+            return [{"ticker": query.upper(), "name": query.upper()}]
     except Exception:
         pass
     from services.mock_data import MOCK_STOCKS
@@ -201,14 +226,15 @@ def get_intraday_data(ticker):
     def fetch():
         try:
             import yfinance as yf
-            stock = yf.Ticker(ticker)
-            df = stock.history(period="1d", interval="5m")
+            df = yf.download(ticker, period="1d", interval="5m", progress=False)
             if not df.empty:
                 df.index = df.index.tz_localize(None) if df.index.tz else df.index
+                if isinstance(df.columns, pd.MultiIndex):
+                    df.columns = df.columns.get_level_values(0)
                 return [
                     {
                         "time": idx.strftime("%H:%M"),
-                        "price": round(row["Close"], 2),
+                        "price": round(float(row["Close"]), 2),
                         "volume": int(row["Volume"]),
                     }
                     for idx, row in df.iterrows()
