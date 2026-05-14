@@ -3,6 +3,7 @@ import pickle
 import time
 import os
 import requests
+import json
 
 DEMO_MODE = os.environ.get("STOCK_DEMO_MODE", "auto")
 
@@ -13,6 +14,8 @@ _cache = {}
 _cache_timestamps = {}
 CACHE_TTL = 1800
 DISK_CACHE_TTL = 86400
+
+_HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
 
 
 def _cache_file(key):
@@ -60,68 +63,84 @@ def _get_cached(key, fetcher):
         _cache[key] = disk_val
         _cache_timestamps[key] = now
         return disk_val
-    raise RuntimeError(f"No data available for {key}")
+    from services.mock_data import get_mock_stock_info
+    return get_mock_stock_info(key.replace("info_", ""))
 
 
-# ---- Stooq: free, no API key, no rate limit ----
+# ---- Yahoo Chart API (free, no key, different rate limit than yfinance) ----
 
-def _fetch_stooq(ticker, days=504):
-    """Fetch historical data from Stooq (free, no key, no rate limit)."""
-    stooq_ticker = f"{ticker.upper()}.US"
-    url = f"https://stooq.com/q/d/l/?s={stooq_ticker}&i=d"
+def _yahoo_chart(ticker, range_str="5d", interval="1d"):
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+    params = {"range": range_str, "interval": interval, "includePrePost": "false"}
     try:
-        df = pd.read_csv(url)
-        if df.empty or "Close" not in df.columns:
+        r = requests.get(url, params=params, headers=_HEADERS, timeout=10)
+        if r.status_code != 200:
             return None
-        df["Date"] = pd.to_datetime(df["Date"])
-        df = df.set_index("Date").sort_index()
-        if len(df) > days:
-            df = df.iloc[-days:]
-        return df
+        data = r.json()
+        result = data.get("chart", {}).get("result")
+        if not result:
+            return None
+        return result[0]
     except Exception:
         return None
 
 
-def _fetch_yfinance(ticker, period="5d"):
-    """Fetch data from yfinance (may be rate-limited)."""
-    try:
-        import yfinance as yf
-        df = yf.download(ticker, period=period, progress=False)
-        if df is not None and not df.empty:
-            df.index = df.index.tz_localize(None) if df.index.tz else df.index
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
-            return df
-    except Exception:
-        pass
-    return None
-
-
-def _info_from_df(ticker, df):
-    """Extract stock info dict from a DataFrame with OHLCV data."""
-    if df is None or df.empty or len(df) < 2:
+def _chart_to_df(chart_data):
+    if not chart_data:
         return None
-    latest = df.iloc[-1]
-    prev = df.iloc[-2]
-
-    price = float(latest["Close"])
-    prev_close = float(prev["Close"])
-    if price <= 0:
+    timestamps = chart_data.get("timestamp")
+    quotes = chart_data.get("indicators", {}).get("quote", [{}])[0]
+    if not timestamps or not quotes:
         return None
+
+    df = pd.DataFrame({
+        "Open": quotes.get("open", []),
+        "High": quotes.get("high", []),
+        "Low": quotes.get("low", []),
+        "Close": quotes.get("close", []),
+        "Volume": quotes.get("volume", []),
+    }, index=pd.to_datetime(timestamps, unit="s"))
+
+    df = df.dropna(subset=["Close"])
+    if df.empty:
+        return None
+    df.index.name = "Date"
+    df.index = df.index.normalize()
+    return df
+
+
+def _chart_to_info(ticker, chart_data):
+    if not chart_data:
+        return None
+    meta = chart_data.get("meta", {})
+    timestamps = chart_data.get("timestamp", [])
+    quotes = chart_data.get("indicators", {}).get("quote", [{}])[0]
+
+    closes = [c for c in (quotes.get("close") or []) if c is not None]
+    if len(closes) < 2:
+        return None
+
+    price = closes[-1]
+    prev_close = meta.get("chartPreviousClose") or meta.get("previousClose") or closes[-2]
+
+    highs = [h for h in (quotes.get("high") or []) if h is not None]
+    lows = [l for l in (quotes.get("low") or []) if l is not None]
+    opens = [o for o in (quotes.get("open") or []) if o is not None]
+    volumes = [v for v in (quotes.get("volume") or []) if v is not None]
 
     return {
         "ticker": ticker.upper(),
-        "name": ticker.upper(),
+        "name": meta.get("shortName") or meta.get("longName") or ticker.upper(),
         "price": round(price, 2),
         "previous_close": round(prev_close, 2),
-        "open": round(float(latest["Open"]), 2),
-        "day_high": round(float(latest["High"]), 2),
-        "day_low": round(float(latest["Low"]), 2),
-        "volume": int(latest["Volume"]),
+        "open": round(opens[-1], 2) if opens else 0,
+        "day_high": round(highs[-1], 2) if highs else 0,
+        "day_low": round(lows[-1], 2) if lows else 0,
+        "volume": int(volumes[-1]) if volumes else 0,
         "market_cap": 0,
         "pe_ratio": 0,
-        "week_52_high": round(float(df["High"].iloc[-252:].max()), 2) if len(df) >= 252 else round(float(df["High"].max()), 2),
-        "week_52_low": round(float(df["Low"].iloc[-252:].min()), 2) if len(df) >= 252 else round(float(df["Low"].min()), 2),
+        "week_52_high": round(meta.get("fiftyTwoWeekHigh", 0), 2),
+        "week_52_low": round(meta.get("fiftyTwoWeekLow", 0), 2),
         "sector": "N/A",
         "industry": "N/A",
     }
@@ -133,18 +152,10 @@ def get_stock_info(ticker):
         return get_mock_stock_info(ticker)
 
     def fetch():
-        # Try yfinance first
-        df = _fetch_yfinance(ticker, period="5d")
-        info = _info_from_df(ticker, df)
+        chart = _yahoo_chart(ticker, range_str="5d", interval="1d")
+        info = _chart_to_info(ticker, chart)
         if info:
             return info
-
-        # Fallback to Stooq
-        df = _fetch_stooq(ticker, days=10)
-        info = _info_from_df(ticker, df)
-        if info:
-            return info
-
         from services.mock_data import get_mock_stock_info
         return get_mock_stock_info(ticker)
 
@@ -161,16 +172,10 @@ def get_stock_history(ticker, period="1y", interval="1d"):
     days = days_map.get(period, 252)
 
     def fetch():
-        # Try yfinance first
-        df = _fetch_yfinance(ticker, period=period)
+        chart = _yahoo_chart(ticker, range_str=period, interval=interval)
+        df = _chart_to_df(chart)
         if df is not None and not df.empty:
             return df
-
-        # Fallback to Stooq
-        df = _fetch_stooq(ticker, days=days)
-        if df is not None and not df.empty:
-            return df
-
         from services.mock_data import generate_mock_history
         return generate_mock_history(ticker, days)
 
@@ -183,34 +188,14 @@ def get_market_overview(tickers):
     if cache_key in _cache and now - _cache_timestamps.get(cache_key, 0) < CACHE_TTL:
         return _cache[cache_key]
 
-    # Try batch yfinance download first (1 API call for all tickers)
-    batch_df = None
-    if DEMO_MODE != "true":
-        batch_df = _fetch_yfinance(tickers, period="5d") if len(tickers) > 1 else None
-
     results = []
     for ticker in tickers:
         info = None
+        try:
+            info = get_stock_info(ticker)
+        except Exception:
+            pass
 
-        # Try extracting from batch download
-        if batch_df is not None and not batch_df.empty:
-            try:
-                if isinstance(batch_df.columns, pd.MultiIndex) and ticker in batch_df.columns.get_level_values(1):
-                    ticker_df = batch_df.xs(ticker, level=1, axis=1).dropna(how="all")
-                    info = _info_from_df(ticker, ticker_df)
-            except Exception:
-                pass
-
-        # Try individual Stooq fetch
-        if info is None:
-            stooq_df = _fetch_stooq(ticker, days=10)
-            info = _info_from_df(ticker, stooq_df)
-
-        # Try disk cache
-        if info is None:
-            info = _load_disk(f"info_{ticker}")
-
-        # Last resort: mock
         if info is None:
             from services.mock_data import get_mock_stock_info
             info = get_mock_stock_info(ticker)
@@ -225,10 +210,6 @@ def get_market_overview(tickers):
             "change_pct": round(change_pct, 2),
         })
 
-        _cache[f"info_{ticker}"] = info
-        _cache_timestamps[f"info_{ticker}"] = now
-        _save_disk(f"info_{ticker}", info)
-
     _cache[cache_key] = results
     _cache_timestamps[cache_key] = now
     return results
@@ -236,11 +217,10 @@ def get_market_overview(tickers):
 
 def search_ticker(query):
     q = query.upper()
-    # Quick test: try Stooq (no rate limit)
-    df = _fetch_stooq(q, days=5)
-    if df is not None and not df.empty:
-        return [{"ticker": q, "name": q}]
-
+    chart = _yahoo_chart(q, range_str="5d", interval="1d")
+    if chart and chart.get("timestamp"):
+        name = chart.get("meta", {}).get("shortName") or q
+        return [{"ticker": q, "name": name}]
     from services.mock_data import MOCK_STOCKS
     results = []
     for t, info in MOCK_STOCKS.items():
@@ -251,24 +231,24 @@ def search_ticker(query):
 
 def get_intraday_data(ticker):
     def fetch():
-        # Intraday only available from yfinance
-        try:
-            import yfinance as yf
-            df = yf.download(ticker, period="1d", interval="5m", progress=False)
-            if not df.empty:
-                df.index = df.index.tz_localize(None) if df.index.tz else df.index
-                if isinstance(df.columns, pd.MultiIndex):
-                    df.columns = df.columns.get_level_values(0)
-                return [
-                    {
-                        "time": idx.strftime("%H:%M"),
-                        "price": round(float(row["Close"]), 2),
-                        "volume": int(row["Volume"]),
-                    }
-                    for idx, row in df.iterrows()
-                ]
-        except Exception:
-            pass
+        chart = _yahoo_chart(ticker, range_str="1d", interval="5m")
+        if chart and chart.get("timestamp"):
+            timestamps = chart["timestamp"]
+            quotes = chart.get("indicators", {}).get("quote", [{}])[0]
+            closes = quotes.get("close", [])
+            volumes = quotes.get("volume", [])
+            result = []
+            for i, ts in enumerate(timestamps):
+                if i < len(closes) and closes[i] is not None:
+                    t = pd.Timestamp(ts, unit="s")
+                    result.append({
+                        "time": t.strftime("%H:%M"),
+                        "price": round(closes[i], 2),
+                        "volume": int(volumes[i]) if i < len(volumes) and volumes[i] else 0,
+                    })
+            if result:
+                return result
+
         import numpy as np
         np.random.seed(hash(ticker + "intraday") % 2**31)
         from services.mock_data import MOCK_STOCKS
