@@ -10,6 +10,7 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `academic-paper` v3.1.2 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure |
 | `academic-paper-reviewer` v1.9.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
 | `academic-pipeline` v3.9.4.1 | Full pipeline orchestrator | (coordinates all above) |
+| `aigc-reduce` v1.0.0 | 三轮 AIGC 降重协议（去除 AI 痕迹 → 注入人类特征 → 自检审计） | 自动扫描 + 确定性替换 |
 
 ## v3.7.3 Key Additions (in progress)
 
