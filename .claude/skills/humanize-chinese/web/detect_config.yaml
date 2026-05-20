@@ -1,7 +1,0 @@
-# AIGC 检测专用最小配置（仅用于提取段落，不做格式化）
-global_format:
-  body_text:
-    font_name: 宋体
-    font_size: 12
-    line_spacing: 1.5
-    line_spacingrule: "1.5倍行距"
