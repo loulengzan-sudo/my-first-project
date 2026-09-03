@@ -1,0 +1,1 @@
+Classify the internet activity as CAPITAL (professional or business-related use) or LEISURE (personal or recreational use). Provide a one-word answer that accurately reflects the nature of the described activity. If unsure, consider providing additional context to ensure accuracy.

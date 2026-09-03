@@ -1,0 +1,12 @@
+# scholar-annotate engine dependencies
+pandas>=2.0
+scikit-learn>=1.2
+numpy
+joblib
+openai>=1.40          # OpenAI live + Batch; also the client for any OpenAI-compatible local server
+anthropic>=0.40       # Claude live + Message Batches
+dspy>=2.5             # MODE 6 prompt optimization + dspy_run.py deployment (optional if you skip DSPy)
+jieba                 # optional — CJK word segmentation; reduce_corpus/annotate_engine fall back to CJK char-bigrams if absent
+# --- MODE 9 distillation backends (all optional; pick per distiller) ---
+transformers          # finetune_distill.py (fine-tuned multilingual BERT) + distill_embed.py (frozen embeddings)
+torch                 # backs transformers (GPU inference/fine-tuning for the distillers)

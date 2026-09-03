@@ -1,0 +1,24 @@
+{
+  "model": "qwen2.5:7b",
+  "steps": 1,
+  "n_per_class": 3,
+  "n_train": 20,
+  "n_val": 8,
+  "n_test": 12,
+  "initial_test_acc": 0.6667,
+  "optimized_test_acc": 0.75,
+  "delta_test_acc": 0.0833,
+  "best_step": 1,
+  "best_val_acc": 0.875,
+  "wall_time_s": 1195.4,
+  "counterintuitive_items_fixed": [
+    {
+      "id": "22",
+      "text": "Looking up the symptoms of high blood pressure.",
+      "gold": "LEISURE",
+      "before": "CAPITAL",
+      "after": "LEISURE"
+    }
+  ],
+  "generated_at": "2026-07-17T14:05:36"
+}

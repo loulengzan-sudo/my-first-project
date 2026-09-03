@@ -1,0 +1,41 @@
+id,text,label,counterintuitive,split
+1,Applying for a job on a recruitment website.,CAPITAL,0,test
+2,Sending a work email to a client about a deadline.,CAPITAL,0,train
+3,Filing an income tax return on the government portal.,CAPITAL,0,val
+4,Transferring money to a supplier via online banking.,CAPITAL,0,train
+5,Registering for a government housing subsidy.,CAPITAL,0,train
+6,Booking a telehealth consultation with a doctor.,CAPITAL,0,test
+7,Paying the monthly electricity bill online.,CAPITAL,0,train
+8,Submitting a visa application form online.,CAPITAL,0,train
+9,Ordering a prescription refill from the pharmacy website.,CAPITAL,0,test
+10,Signing an employment contract electronically.,CAPITAL,0,train
+11,Applying for a bank loan online.,CAPITAL,0,val
+12,Submitting a university enrollment form.,CAPITAL,0,train
+13,Renewing a driver's license on the government site.,CAPITAL,0,test
+14,Depositing a paycheck through the mobile banking app.,CAPITAL,0,train
+15,Filing a medical reimbursement claim with the insurer.,CAPITAL,0,val
+16,Scheduling a job interview by email.,CAPITAL,0,train
+17,Registering a small business on the official portal.,CAPITAL,0,test
+18,Updating tax withholding details on the payroll system.,CAPITAL,0,train
+19,Booking a vaccination appointment on the health portal.,CAPITAL,0,val
+20,Uploading documents to a mortgage application.,CAPITAL,0,test
+21,Reading the morning news about the national economy.,LEISURE,1,train
+22,Looking up the symptoms of high blood pressure.,LEISURE,1,test
+23,Watching a YouTube tutorial about Excel formulas.,LEISURE,1,train
+24,Searching for scholarship and admission information.,LEISURE,1,test
+25,Watching a documentary explainer on climate policy.,LEISURE,1,test
+26,Practicing English on a language-learning app.,LEISURE,1,train
+27,Researching farming techniques to raise crop yield.,LEISURE,1,train
+28,Reading product reviews before deciding on a laptop.,LEISURE,1,test
+29,Looking up legal information about a rental contract.,LEISURE,1,val
+30,Checking the weather forecast for the week.,LEISURE,1,val
+31,Playing a mobile battle game with friends.,LEISURE,0,train
+32,Scrolling short videos on Douyin for an hour.,LEISURE,0,train
+33,Streaming a romance drama series in the evening.,LEISURE,0,test
+34,Chatting with friends about weekend plans.,LEISURE,0,train
+35,Listening to a music playlist while relaxing.,LEISURE,0,val
+36,Reading celebrity gossip news.,LEISURE,0,train
+37,Watching a live-stream of a gaming influencer.,LEISURE,0,train
+38,Watching highlight clips of a football match.,LEISURE,0,train
+39,Playing casual puzzle games to pass time.,LEISURE,0,val
+40,Watching a K-pop music video.,LEISURE,0,test

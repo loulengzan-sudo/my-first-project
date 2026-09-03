@@ -1,0 +1,21 @@
+==============================================================================
+TextGrad prompt-optimization test — can it learn a narrow codebook from labels?
+model=qwen2.5:7b (fwd+bwd)  steps=1  n_per_class=3  endpoint=http://localhost:11434/v1
+==============================================================================
+data: train=20  val=8  test=12  (balanced)
+
+[step 0] evaluating the INITIAL (vague, intuition-following) prompt ...
+           val acc = 0.750   test acc = 0.667
+
+[step 1] TGD on 6 items (CAPITAL ids ['2', '4', '5'], LEISURE ids ['21', '23', '26']) ...
+           val acc = 0.875   test acc = 0.750
+           prompt now: 'Classify the internet activity as CAPITAL (professional or business-related use) or LEISURE (personal or recre'...
+           ^ new best-on-val checkpoint
+
+==============================================================================
+RESULT
+  initial  prompt : test acc = 0.667
+  optimized prompt: test acc = 0.750  (best-on-val at step 1, val 0.875)
+  change          : +0.083 test accuracy
+  wall time       : 1195s
+==============================================================================

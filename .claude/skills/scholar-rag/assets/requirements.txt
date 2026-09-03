@@ -1,0 +1,22 @@
+# scholar-rag engine dependencies (installed into a self-contained venv by setup-venv.sh)
+# Target interpreter: CPython 3.12 (torch/bge-m3 wheels are reliable there; the
+# host machine's system Python may be newer than torch supports).
+
+# --- core: extraction + store + embeddings (M1) ---
+pymupdf>=1.24            # fast, layout-aware PDF text extraction (import name: fitz)
+lancedb>=0.13           # embedded on-disk vector store + native full-text (BM25) search
+sentence-transformers>=3.0   # BAAI/bge-m3 dense embeddings (pulls torch + transformers)
+numpy>=1.26
+tqdm>=4.66              # progress bars for long ingest/embed runs
+requests>=2.31          # ollama HTTP + optional open-access fetch (Unpaywall/arXiv/OpenAlex)
+
+# --- MCP server (M2) ---
+mcp>=1.2                # official Model Context Protocol Python SDK (stdio server)
+
+# --- GraphRAG (M4) — installed unless setup-venv.sh --no-graph ---
+networkx>=3.2           # entity graph construction + traversal
+python-igraph>=0.11     # graph backing for Leiden
+leidenalg>=0.10         # Leiden community detection (hierarchical)
+
+# --- optional reranking (M3); same torch runtime, no extra heavy deps ---
+# CrossEncoder ships with sentence-transformers; BAAI/bge-reranker-v2-m3 pulled on demand.

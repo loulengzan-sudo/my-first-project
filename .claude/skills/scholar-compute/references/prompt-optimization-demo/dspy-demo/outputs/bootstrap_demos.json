@@ -1,0 +1,34 @@
+[
+  {
+    "activity": "Sending a work email to a client about a deadline.",
+    "label": "CAPITAL"
+  },
+  {
+    "activity": "Transferring money to a supplier via online banking.",
+    "label": "CAPITAL"
+  },
+  {
+    "activity": "Registering for a government housing subsidy.",
+    "label": "CAPITAL"
+  },
+  {
+    "activity": "Paying the monthly electricity bill online.",
+    "label": "CAPITAL"
+  },
+  {
+    "activity": "Submitting a visa application form online.",
+    "label": "CAPITAL"
+  },
+  {
+    "activity": "Chatting with friends about weekend plans.",
+    "label": "LEISURE"
+  },
+  {
+    "activity": "Depositing a paycheck through the mobile banking app.",
+    "label": "CAPITAL"
+  },
+  {
+    "activity": "Playing a mobile battle game with friends.",
+    "label": "LEISURE"
+  }
+]

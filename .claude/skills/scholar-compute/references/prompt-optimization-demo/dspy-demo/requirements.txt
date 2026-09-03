@@ -1,0 +1,4 @@
+# DSPy prompt-optimization demo — Python 3.12 recommended.
+# Runs fully local against Ollama via litellm's 'ollama_chat/<model>' provider (no API key).
+dspy>=3.2,<4
+optuna>=3.0          # required by the MIPROv2 optimizer (Bayesian search over candidates)

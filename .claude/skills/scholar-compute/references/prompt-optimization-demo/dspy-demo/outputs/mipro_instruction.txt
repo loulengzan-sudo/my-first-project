@@ -1,0 +1,8 @@
+Given an activity description from a digital entertainment dataset, use your language model to predict whether it should be labeled as 'CAPITAL' (related to capital management or financial transactions) or 'LEISURE' (non-essential leisure activities). For example:
+Activity: Sending a work email to a client about a deadline.
+Label: CAPITAL
+
+Activity: Watching a movie on Netflix in the evening.
+Label: LEISURE
+
+Please provide your prediction for each activity described.

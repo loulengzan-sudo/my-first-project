@@ -1,0 +1,22 @@
+[SYSTEM]
+Your input fields are:
+1. `activity` (str): a short description of an internet activity
+Your output fields are:
+1. `label` (str): exactly one word: CAPITAL or LEISURE
+All interactions will be structured in the following way, with the appropriate values filled in.
+
+[[ ## activity ## ]]
+{activity}
+
+[[ ## label ## ]]
+{label}
+
+[[ ## completed ## ]]
+In adhering to this structure, your objective is: 
+        Classify the internet activity as CAPITAL (capital-enhancing use) or LEISURE (recreational use).
+
+[USER]
+[[ ## activity ## ]]
+Applying for a job on a recruitment website.
+
+Respond with the corresponding output fields, starting with the field `[[ ## label ## ]]`, and then ending with the marker for `[[ ## completed ## ]]`.

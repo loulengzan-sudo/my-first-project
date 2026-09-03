@@ -1,0 +1,4 @@
+# TextGrad prompt-optimization demo — Python 3.12 recommended.
+# Runs fully local against Ollama's OpenAI-compatible endpoint (no API key, no cost).
+textgrad==0.1.8
+openai>=1.40

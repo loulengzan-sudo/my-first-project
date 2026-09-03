@@ -1,0 +1,22 @@
+==============================================================================
+DSPy prompt-optimization test — can BootstrapFewShot learn a narrow codebook?
+model=qwen2.5:7b  api_base=http://localhost:11434
+==============================================================================
+data: train=20  val=8  test=12  (balanced)
+
+[baseline] zero-shot dspy.Predict (vague signature) ...
+           test acc = 0.667
+
+[optimizer 1] BootstrapFewShot — bootstraps few-shot demos (max_bs=4, max_labeled=8) ...
+              test acc = 0.667  (+0.000 vs baseline)
+
+[optimizer 2] MIPROv2(auto='light') — proposes an optimized INSTRUCTION (+ demos) ...
+              test acc = 0.750  (+0.083 vs baseline)
+
+==============================================================================
+RESULT (same task/data as the TextGrad demo)
+  baseline  (zero-shot instruction)        : test acc = 0.667
+  BootstrapFewShot (select demonstrations) : test acc = 0.667  (+0.000)
+  MIPROv2 (optimize the instruction)       : test acc = 0.750  (+0.083)
+  wall time                                : 0s
+==============================================================================

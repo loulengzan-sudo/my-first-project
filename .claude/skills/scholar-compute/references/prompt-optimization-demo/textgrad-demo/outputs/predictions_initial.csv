@@ -1,0 +1,13 @@
+id,text,gold,pred,correct,counterintuitive,raw
+1,Applying for a job on a recruitment website.,CAPITAL,CAPITAL,1,0,CAPITAL
+6,Booking a telehealth consultation with a doctor.,CAPITAL,CAPITAL,1,0,CAPITAL
+9,Ordering a prescription refill from the pharmacy website.,CAPITAL,CAPITAL,1,0,CAPITAL
+13,Renewing a driver's license on the government site.,CAPITAL,CAPITAL,1,0,CAPITAL
+17,Registering a small business on the official portal.,CAPITAL,CAPITAL,1,0,CAPITAL
+20,Uploading documents to a mortgage application.,CAPITAL,CAPITAL,1,0,CAPITAL
+22,Looking up the symptoms of high blood pressure.,LEISURE,CAPITAL,0,1,CAPITAL
+24,Searching for scholarship and admission information.,LEISURE,CAPITAL,0,1,CAPITAL
+25,Watching a documentary explainer on climate policy.,LEISURE,CAPITAL,0,1,CAPITAL
+28,Reading product reviews before deciding on a laptop.,LEISURE,CAPITAL,0,1,CAPITAL
+33,Streaming a romance drama series in the evening.,LEISURE,LEISURE,1,0,LEISURE
+40,Watching a K-pop music video.,LEISURE,LEISURE,1,0,LEISURE

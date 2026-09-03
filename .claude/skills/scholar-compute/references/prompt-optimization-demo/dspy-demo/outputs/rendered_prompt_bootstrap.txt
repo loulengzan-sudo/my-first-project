@@ -1,0 +1,110 @@
+[SYSTEM]
+Your input fields are:
+1. `activity` (str): a short description of an internet activity
+Your output fields are:
+1. `label` (str): exactly one word: CAPITAL or LEISURE
+All interactions will be structured in the following way, with the appropriate values filled in.
+
+[[ ## activity ## ]]
+{activity}
+
+[[ ## label ## ]]
+{label}
+
+[[ ## completed ## ]]
+In adhering to this structure, your objective is: 
+        Classify the internet activity as CAPITAL (capital-enhancing use) or LEISURE (recreational use).
+
+[USER]
+[[ ## activity ## ]]
+Sending a work email to a client about a deadline.
+
+[ASSISTANT]
+[[ ## label ## ]]
+CAPITAL
+
+[[ ## completed ## ]]
+
+
+[USER]
+[[ ## activity ## ]]
+Transferring money to a supplier via online banking.
+
+[ASSISTANT]
+[[ ## label ## ]]
+CAPITAL
+
+[[ ## completed ## ]]
+
+
+[USER]
+[[ ## activity ## ]]
+Registering for a government housing subsidy.
+
+[ASSISTANT]
+[[ ## label ## ]]
+CAPITAL
+
+[[ ## completed ## ]]
+
+
+[USER]
+[[ ## activity ## ]]
+Paying the monthly electricity bill online.
+
+[ASSISTANT]
+[[ ## label ## ]]
+CAPITAL
+
+[[ ## completed ## ]]
+
+
+[USER]
+[[ ## activity ## ]]
+Submitting a visa application form online.
+
+[ASSISTANT]
+[[ ## label ## ]]
+CAPITAL
+
+[[ ## completed ## ]]
+
+
+[USER]
+[[ ## activity ## ]]
+Chatting with friends about weekend plans.
+
+[ASSISTANT]
+[[ ## label ## ]]
+LEISURE
+
+[[ ## completed ## ]]
+
+
+[USER]
+[[ ## activity ## ]]
+Depositing a paycheck through the mobile banking app.
+
+[ASSISTANT]
+[[ ## label ## ]]
+CAPITAL
+
+[[ ## completed ## ]]
+
+
+[USER]
+[[ ## activity ## ]]
+Playing a mobile battle game with friends.
+
+[ASSISTANT]
+[[ ## label ## ]]
+LEISURE
+
+[[ ## completed ## ]]
+
+
+[USER]
+[[ ## activity ## ]]
+Applying for a job on a recruitment website.
+
+Respond with the corresponding output fields, starting with the field `[[ ## label ## ]]`, and then ending with the marker for `[[ ## completed ## ]]`.

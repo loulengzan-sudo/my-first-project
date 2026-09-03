@@ -1,0 +1,35 @@
+{
+  "framework": "dspy",
+  "dspy_version": "3.2.1",
+  "model": "qwen2.5:7b",
+  "n_train": 20,
+  "n_val": 8,
+  "n_test": 12,
+  "baseline_test_acc": 0.6667,
+  "bootstrapfewshot": {
+    "optimizer": "BootstrapFewShot(max_bootstrapped_demos=4, max_labeled_demos=8)",
+    "test_acc": 0.6667,
+    "delta": 0.0,
+    "n_demos": 8,
+    "counterintuitive_items_fixed": []
+  },
+  "miprov2": {
+    "optimizer": "MIPROv2(auto='light')",
+    "error": null,
+    "test_acc": 0.75,
+    "delta": 0.0833,
+    "optimized_instruction": "Given an activity description from a digital entertainment dataset, use your language model to predict whether it should be labeled as 'CAPITAL' (related to capital management or financial transactions) or 'LEISURE' (non-essential leisure activities). For example:\nActivity: Sending a work email to a client about a deadline.\nLabel: CAPITAL\n\nActivity: Watching a movie on Netflix in the evening.\nLabel: LEISURE\n\nPlease provide your prediction for each activity described.",
+    "n_demos": 0,
+    "counterintuitive_items_fixed": [
+      {
+        "id": "25",
+        "text": "Watching a documentary explainer on climate policy.",
+        "gold": "LEISURE",
+        "before": "CAPITAL",
+        "after": "LEISURE"
+      }
+    ]
+  },
+  "wall_time_s": 0.3,
+  "generated_at": "2026-07-17T14:31:56"
+}

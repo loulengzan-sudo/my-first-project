@@ -1,0 +1,1 @@
+Classify the internet activity as CAPITAL (capital-enhancing use) or LEISURE (recreational use). Answer with one word.

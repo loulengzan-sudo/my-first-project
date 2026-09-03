@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "claim-audit-record.schema.json",
+  "title": "claim-audit-record/v1",
+  "description": "One adjudicated (sentence, citation) pair in a project's claim-faithfulness audit (evidence/claim-faithfulness-audit-[date].ndjson). Produced by the verify-claim-faithfulness agent (.claude/agents/verify-claim-faithfulness.md) and scholar-citation Step V-3.5. EVERY adjudicated claim gets a record, including CLAIM-VERIFIED. Validated by scripts/gates/check-claim-audit-consistency.sh.",
+  "type": "object",
+  "required": [
+    "schema",
+    "claim_id",
+    "cite_key",
+    "manuscript_loc",
+    "manuscript_quote",
+    "citation_function",
+    "sub_claims",
+    "sentence_verdict",
+    "severity",
+    "access_tier_max",
+    "evidence_retrieved"
+  ],
+  "properties": {
+    "schema": { "const": "claim-audit-record/v1" },
+    "claim_id": { "type": "string", "minLength": 1 },
+    "cite_key": { "type": "string", "minLength": 1 },
+    "manuscript_loc": { "type": "string", "description": "file:line at audit time" },
+    "manuscript_quote": { "type": "string", "description": "Verbatim prose sentence being audited" },
+    "claim_fingerprint": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "sha256 of the normalized manuscript sentence (lowercase, HTML comments stripped, whitespace collapsed). Used by evidence-anchor-check.sh --phase 11-entry to detect claims rewritten after audit."
+    },
+    "citation_function": { "enum": ["empirical", "theoretical", "method", "pointer"] },
+    "anchor_refs": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9_-]+-[0-9a-f]{8}$" },
+      "description": "anchor_ids from evidence/claim-anchors.ndjson consulted for this claim. REQUIRED (non-empty) when the audited sentence carries <!--ev:--> tags; empty plus unmatched_reason otherwise."
+    },
+    "unmatched_reason": {
+      "type": ["string", "null"],
+      "description": "Why anchor_refs is empty (e.g. 'no write-time anchor exists for this claim')."
+    },
+    "sub_claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["kind", "verdict", "access_tier"],
+        "properties": {
+          "kind": {
+            "enum": ["existence", "direction", "magnitude", "population", "causal", "theory", "method"]
+          },
+          "verdict": {
+            "enum": ["SUPPORTED", "PARTIAL", "UNSUPPORTED", "CONTRADICTED", "NOT_FOUND", "UNVERIFIABLE"]
+          },
+          "evidence_quote": { "type": ["string", "null"], "description": "VERBATIM source passage bearing on this sub-claim. Required for SUPPORTED and CONTRADICTED verdicts (enforced by check-claim-audit-consistency.sh)." },
+          "source_loc": { "type": ["string", "null"] },
+          "access_tier": {
+            "enum": ["T0_kg_fulltext", "T1_fulltext", "T2_oa_fulltext", "T3_abstract", "T4_none"]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "sentence_verdict": {
+      "enum": [
+        "CLAIM-VERIFIED",
+        "CLAIM-IMPRECISE",
+        "CLAIM-MISCHARACTERIZED",
+        "CLAIM-OVERCAUSAL",
+        "CLAIM-WRONG-POPULATION",
+        "CLAIM-REVERSED",
+        "CLAIM-UNSUPPORTED",
+        "CLAIM-NOT-A-CLAIM",
+        "CLAIM-NOT-CHECKABLE"
+      ]
+    },
+    "severity": { "enum": ["HIGH", "MED", "OK", "UNVERIFIABLE"] },
+    "access_tier_max": {
+      "enum": ["T0_kg_fulltext", "T1_fulltext", "T2_oa_fulltext", "T3_abstract", "T4_none"],
+      "description": "Strongest tier reached across sub-claims. Precision rule: CLAIM-UNSUPPORTED requires T0/T1/T2 — abstract-only absence is CLAIM-NOT-CHECKABLE."
+    },
+    "evidence_retrieved": { "type": "boolean" },
+    "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+  },
+  "additionalProperties": false
+}

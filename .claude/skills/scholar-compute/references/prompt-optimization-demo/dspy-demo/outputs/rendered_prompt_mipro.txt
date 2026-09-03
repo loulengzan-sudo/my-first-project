@@ -1,0 +1,29 @@
+[SYSTEM]
+Your input fields are:
+1. `activity` (str): a short description of an internet activity
+Your output fields are:
+1. `label` (str): exactly one word: CAPITAL or LEISURE
+All interactions will be structured in the following way, with the appropriate values filled in.
+
+[[ ## activity ## ]]
+{activity}
+
+[[ ## label ## ]]
+{label}
+
+[[ ## completed ## ]]
+In adhering to this structure, your objective is: 
+        Given an activity description from a digital entertainment dataset, use your language model to predict whether it should be labeled as 'CAPITAL' (related to capital management or financial transactions) or 'LEISURE' (non-essential leisure activities). For example:
+        Activity: Sending a work email to a client about a deadline.
+        Label: CAPITAL
+        
+        Activity: Watching a movie on Netflix in the evening.
+        Label: LEISURE
+        
+        Please provide your prediction for each activity described.
+
+[USER]
+[[ ## activity ## ]]
+Applying for a job on a recruitment website.
+
+Respond with the corresponding output fields, starting with the field `[[ ## label ## ]]`, and then ending with the marker for `[[ ## completed ## ]]`.
