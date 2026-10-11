@@ -1,0 +1,163 @@
+{
+ "tyzb02": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760002",
+  "success": true,
+  "status": 200,
+  "html_len": 21095,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/bdafb1a71a1b45cc852ccc5ea81f1092318.pdf",
+  "blocks": 36
+ },
+ "tyzb03": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760003",
+  "success": true,
+  "status": 200,
+  "html_len": 39999,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/866054c0f8c34238b86662c66483593b417.pdf",
+  "blocks": 36
+ },
+ "tyzb04": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760004",
+  "success": true,
+  "status": 200,
+  "html_len": 40250,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/0dbb6d7c0dea47dfb3b25452f04f12e0702.pdf",
+  "blocks": 36
+ },
+ "tyzb06": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760006",
+  "success": true,
+  "status": 200,
+  "html_len": 44375,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/8fcc129a44504fa7b424a8d6cd341ce0913.pdf",
+  "blocks": 40
+ },
+ "tyzb08": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760008",
+  "success": true,
+  "status": 200,
+  "html_len": 36519,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/5c526768d1d040c0bb378c65cf4bebae245.pdf",
+  "blocks": 44
+ },
+ "tyzb10": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760010",
+  "success": true,
+  "status": 200,
+  "html_len": 36929,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/8f23e541906f461aa95a110768c2ab85531.pdf",
+  "blocks": 40
+ },
+ "tyzb11": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760011",
+  "success": true,
+  "status": 200,
+  "html_len": 36628,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/e2b7cb795913438786eeb34e6a5eb1b6897.pdf",
+  "blocks": 18
+ },
+ "tyzb12": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760012",
+  "success": true,
+  "status": 200,
+  "html_len": 37446,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/f6569c1ece0e489b976ba145d13935ba846.pdf",
+  "blocks": 36
+ },
+ "tyzb13": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760013",
+  "success": true,
+  "status": 200,
+  "html_len": 34803,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/936fa37bf71f44329223adcf514d3f71470.pdf",
+  "blocks": 15
+ },
+ "tyzb15": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760015",
+  "success": true,
+  "status": 200,
+  "html_len": 34295,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/ccd6146181b2428984773ec97ae03608439.pdf",
+  "blocks": 17
+ },
+ "tyzb19": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760019",
+  "success": true,
+  "status": 200,
+  "html_len": 41451,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/308ecdc3ef0a47ecbfb759014aced1c7223.pdf",
+  "blocks": 48
+ },
+ "tyzb21": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760021",
+  "success": true,
+  "status": 200,
+  "html_len": 34938,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/48861eec48ca49dca6877e9ae8d7fd0e861.pdf",
+  "blocks": 36
+ },
+ "tyzb22": {
+  "url": "https://www.macaudata.mo/showbook?bno=j760022",
+  "success": true,
+  "status": 200,
+  "html_len": 35501,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/fe995661b7634b6e9df35a61bb0cd3d6946.pdf",
+  "blocks": 44
+ },
+ "qiqumen": {
+  "url": "https://www.macaudata.mo/showbook?bno=b001978",
+  "success": true,
+  "status": 200,
+  "html_len": 32796,
+  "error": "",
+  "pdf_url": "https://www.macaudata.mo/uploads/books/pdf/5579b1a7491641e3b6982d9ee589ca13722.pdf",
+  "blocks": 238
+ },
+ "qiqumen_detail": {
+  "url": "https://www.macaudata.mo/books/detail?bno=b001978",
+  "success": true,
+  "status": 200,
+  "html_len": 41054,
+  "error": ""
+ },
+ "W01": {
+  "url": "https://www.paulpangstory.com/blog/2014-05-29-2015-2015-11",
+  "success": true,
+  "status": 200,
+  "html_len": 178412,
+  "error": ""
+ },
+ "W02": {
+  "url": "https://www.paulpangstory.com/blog/2014-06-26-2015-07",
+  "success": true,
+  "status": 200,
+  "html_len": 171246,
+  "error": ""
+ },
+ "W03": {
+  "url": "https://www.paulpangstory.com/blog/2014-10-16",
+  "success": true,
+  "status": 200,
+  "html_len": 175493,
+  "error": ""
+ },
+ "W04": {
+  "url": "https://www.paulpangstory.com/blog/2014-09-01a628a8-f917-4d92-b46d-ca47af60e244",
+  "success": true,
+  "status": 200,
+  "html_len": 190504,
+  "error": ""
+ }
+}
